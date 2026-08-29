@@ -16,11 +16,13 @@ ALTER TABLE trabajador ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trabajador_estado_contexto ENABLE ROW LEVEL SECURITY;
 
 -- Documento: un TRABAJADOR solo puede ver sus propios documentos.
+-- Nota: Prisma mapea los `id String @default(uuid())` a columnas TEXT en
+-- Postgres (no al tipo nativo UUID), por eso comparamos como texto, sin cast.
 CREATE POLICY documento_aislamiento_trabajador ON documento
   FOR SELECT
   USING (
     current_setting('app.rol', true) IS DISTINCT FROM 'TRABAJADOR'
-    OR trabajador_id = current_setting('app.trabajador_id', true)::uuid
+    OR trabajador_id = current_setting('app.trabajador_id', true)
   );
 
 -- Trabajador: un TRABAJADOR solo puede ver su propio registro.
@@ -28,7 +30,7 @@ CREATE POLICY trabajador_aislamiento_propio ON trabajador
   FOR SELECT
   USING (
     current_setting('app.rol', true) IS DISTINCT FROM 'TRABAJADOR'
-    OR id = current_setting('app.trabajador_id', true)::uuid
+    OR id = current_setting('app.trabajador_id', true)
   );
 
 -- Estado de contexto: idem.
@@ -36,7 +38,7 @@ CREATE POLICY estado_contexto_aislamiento_trabajador ON trabajador_estado_contex
   FOR SELECT
   USING (
     current_setting('app.rol', true) IS DISTINCT FROM 'TRABAJADOR'
-    OR trabajador_id = current_setting('app.trabajador_id', true)::uuid
+    OR trabajador_id = current_setting('app.trabajador_id', true)
   );
 
 -- NOTA: el usuario de conexión de la aplicación (el que usa DATABASE_URL)
