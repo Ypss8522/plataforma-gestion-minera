@@ -9,6 +9,7 @@ import { AcreditacionModule } from './acreditacion/acreditacion.module';
 import { OperacionesModule } from './operaciones/operaciones.module';
 import { GerenciaModule } from './gerencia/gerencia.module';
 import { MobileModule } from './mobile/mobile.module';
+import { HealthController } from './health.controller';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -24,6 +25,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     GerenciaModule,
     MobileModule,
   ],
+  controllers: [HealthController],
   providers: [
     // Orden de guards globales: rate limit -> autenticación JWT -> RBAC.
     // Los guards @UseGuards() a nivel de controller (RolesGuard con @Roles)

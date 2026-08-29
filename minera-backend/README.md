@@ -60,6 +60,10 @@ API disponible en `http://localhost:3000/api/v1`.
 7. **Rate limiting** — global (100 req/min) y reforzado en `/auth/login` (5 intentos/min) contra fuerza bruta.
 8. **bcrypt** para hash de contraseñas, nunca texto plano.
 
+## CI/CD
+
+Ver [`docs/CI_CD.md`](./docs/CI_CD.md) para la guía completa de configuración de GitHub Actions (CI) y Railway (CD).
+
 ## Pendiente para completar Sprint 1
 
 - [ ] `StorageService` real (S3/GCS) con URLs firmadas de 5 min para subida de fotos de documentos.

@@ -1,0 +1,50 @@
+# Render Blueprint — define backend, Postgres y Redis como código.
+# Al conectar el repo en Render y detectar este archivo, ofrece crear
+# los 3 servicios automáticamente con "New +  → Blueprint".
+# Docs: https://render.com/docs/blueprint-spec
+
+databases:
+  - name: minera-postgres
+    plan: free # cambiar a "starter" o superior antes de producción real
+    databaseName: minera_acreditacion
+    user: minera_user
+    region: oregon # usar la misma region en todos los servicios
+
+services:
+  - type: redis
+    name: minera-redis
+    plan: free
+    region: oregon
+    ipAllowList: [] # vacío = solo accesible desde servicios internos de Render
+
+  - type: web
+    name: minera-backend
+    runtime: node
+    plan: free # cambiar a "starter" o superior antes de producción real
+    region: oregon
+    branch: main
+    autoDeploy: true # esto ES el CD: cada push a main dispara un deploy
+    buildCommand: npm install && npm run prisma:generate && npm run build
+    startCommand: npm run prisma:migrate:deploy && npm run start:prod
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: minera-postgres
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          name: minera-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: minera-redis
+          type: redis
+          property: port
+      - key: JWT_SECRET
+        generateValue: true # Render genera un secreto fuerte automáticamente
+      - key: CORS_ORIGINS
+        value: http://localhost:3001
+      - key: NODE_ENV
+        value: production
