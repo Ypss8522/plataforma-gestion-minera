@@ -53,6 +53,20 @@ psql "postgresql://...render-url.../minera_acreditacion" -f prisma/rls-policies.
 ```
 Repite esto solo cuando agreguen una tabla nueva que necesite RLS — es intencionalmente manual, para revisar cambios de seguridad antes de aplicarlos.
 
+### 4.1 Cargar datos semilla (seed) — manual, no corre en cada deploy
+El seed (mineras Antapacay/Las Bambas, tags, matriz de requisitos, usuario admin) tampoco corre automáticamente — sería destructivo/redundante re-sembrar en cada push. Córrelo una sola vez apuntando a la base de Render:
+```bash
+DATABASE_URL="postgresql://...render-url.../minera_acreditacion" npm run prisma:seed
+```
+
+### 4.2 Checklist de configuración de la base de datos (no confundir con "ya está lista")
+- [ ] Blueprint aplicado → la instancia de Postgres existe (vacía).
+- [ ] `prisma migrate deploy` corrió en el primer deploy → las tablas existen.
+- [ ] RLS aplicado manualmente (paso 4).
+- [ ] Seed corrido manualmente (paso 4.1).
+- [ ] Revisar el plan: el Postgres **free de Render expira a los 30 días** — antes de esa fecha, hacer upgrade a `starter` si el proyecto sigue activo, o perderán los datos.
+- [ ] Guardar el "External Database URL" en un lugar seguro compartido (ej. gestor de contraseñas del equipo), no en el chat ni en el repo — la necesitarán para seed/RLS/debugging futuro.
+
 ### 5. Proteger la rama `main` en GitHub
 GitHub → repo → **Settings → Branches → Add branch protection rule**:
 - Branch name pattern: `main`
@@ -62,7 +76,20 @@ GitHub → repo → **Settings → Branches → Add branch protection rule**:
 
 Sin esto, el CI corre pero no impide que se mergee código roto.
 
-## Flujo de trabajo del día a día
+## Troubleshooting — problemas reales ya resueltos
+
+### `ENOENT: no such file or directory, open '.../package.json'`
+Causa: el repo tiene el código dentro de una subcarpeta (`minera-backend/`) en vez de en la raíz, y Render no sabía dónde buscar. Solución aplicada: agregar `rootDir: minera-backend` al servicio `web` en `render.yaml`. Con eso, Render ejecuta `buildCommand`/`startCommand` dentro de esa carpeta.
+
+Esto también afecta a **GitHub Actions**: como `ci.yml` vive obligatoriamente en `.github/workflows/` en la raíz del repo, pero el `package.json` está en `minera-backend/`, el workflow necesita `defaults.run.working-directory: minera-backend` (ya aplicado en `ci.yml`) — si no, el CI falla con el mismo tipo de error que tuviste en Render.
+
+### Build falla buscando `nest`/`@nestjs/cli` (devDependencies no instaladas)
+Causa: Render corre `npm install` con `NODE_ENV=production` por defecto, lo que **omite `devDependencies`** — y `nest build` necesita `@nestjs/cli`, que originalmente estaba en `devDependencies`.
+Dos soluciones válidas (con cualquiera de las dos basta, no hace falta aplicar ambas):
+1. Cambiar el build command a `npm install --include=dev ...` (ya aplicado en `render.yaml`).
+2. Mover los paquetes que el build necesita (`@nestjs/cli`, `@types/*` usados en compilación) a `dependencies` en vez de `devDependencies` (también aplicado en `package.json`, de forma redundante con la opción 1 — no genera conflicto, solo es doble seguro).
+
+
 
 1. `git checkout -b feature/nombre-corto`
 2. Trabajas, commiteas.

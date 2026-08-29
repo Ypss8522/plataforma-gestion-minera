@@ -17,7 +17,5 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "prisma", "**/*.spec.ts"]
+  }
 }
