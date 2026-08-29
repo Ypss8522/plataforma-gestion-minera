@@ -22,6 +22,7 @@ services:
     runtime: node
     plan: free # cambiar a "starter" o superior antes de producción real
     region: oregon
+    rootDir: minera-backend
     branch: main
     autoDeploy: true # esto ES el CD: cada push a main dispara un deploy
     buildCommand: npm install && npm run prisma:generate && npm run build
