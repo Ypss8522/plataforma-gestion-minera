@@ -13,12 +13,14 @@ import { HealthController } from './health.controller';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { StorageModule } from './common/storage/storage.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]), // rate limit global por defecto
     PrismaModule,
+    StorageModule,
     AuthModule,
     AcreditacionModule,
     OperacionesModule,
