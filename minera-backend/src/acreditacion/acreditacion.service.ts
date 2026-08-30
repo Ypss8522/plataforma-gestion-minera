@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../common/storage/storage.service';
 import { CrearDocumentoDto } from './dto/crear-documento.dto';
 import { calcularEstadoSemaforo } from '../common/utils/semaforo.util';
 
@@ -8,13 +9,11 @@ const TAMANO_MAX_BYTES = 10 * 1024 * 1024; // 10MB
 
 @Injectable()
 export class AcreditacionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService, // <-- Inyectar StorageService
+  ) {}
 
-  /**
-   * CU-01 — Registro de documento (incluye fotos tomadas desde la app móvil).
-   * La subida real a Cloud Storage (S3/GCS) se delega a un StorageService
-   * (no incluido en este esqueleto); aquí se valida y se calcula el semáforo.
-   */
   async crearDocumento(dto: CrearDocumentoDto, subidoPor: string) {
     const tipo = await this.prisma.documentoTipo.findUnique({ where: { id: dto.documentoTipoId } });
     if (!tipo) {
@@ -23,7 +22,8 @@ export class AcreditacionService {
       });
     }
 
-    this.validarArchivo(dto.archivoBase64, dto.archivoMimeType);
+    const mimeType = dto.archivoMimeType || 'application/pdf';
+    this.validarArchivo(dto.archivoBase64, mimeType);
 
     if (tipo.requiereVencimiento && !dto.fechaVencimiento) {
       throw new BadRequestException({
@@ -32,7 +32,6 @@ export class AcreditacionService {
     }
 
     const fechaVencimiento = dto.fechaVencimiento ? new Date(dto.fechaVencimiento) : null;
-
     if (fechaVencimiento && fechaVencimiento < new Date()) {
       throw new BadRequestException({
         error: { code: 'DOCUMENTO_YA_VENCIDO', message: 'La fecha de vencimiento es anterior a hoy.' },
@@ -41,16 +40,20 @@ export class AcreditacionService {
 
     const { estado } = calcularEstadoSemaforo(fechaVencimiento, tipo.ventanaAlertaDias);
 
-    // TODO (Sprint 1): subir dto.archivoBase64 a Cloud Storage vía StorageService
-    // y obtener una URL firmada de corta duración; nunca persistir el binario
-    // ni una URL pública permanente en la base de datos.
-    const archivoUrl = `pending-upload://${dto.trabajadorId}/${dto.documentoTipoId}`;
+    // 1. Subir a Cloudflare R2 y obtener la clave del archivo (Key)
+    const fileKey = await this.storageService.subirArchivoBase64(
+      dto.archivoBase64,
+      mimeType,
+      dto.trabajadorId,
+      dto.documentoTipoId,
+    );
 
+    // 2. Persistir metadatos en PostgreSQL
     const documento = await this.prisma.documento.create({
       data: {
         trabajadorId: dto.trabajadorId,
         documentoTipoId: dto.documentoTipoId,
-        archivoUrl,
+        archivoUrl: fileKey, // Guardamos la clave interna, nunca URLs públicas
         fechaEmision: dto.fechaEmision ? new Date(dto.fechaEmision) : null,
         fechaVencimiento,
         estadoSemaforo: estado,
@@ -58,23 +61,23 @@ export class AcreditacionService {
       },
     });
 
-    // TODO: disparar recálculo de trabajador_estado_contexto (trigger o job encolado en BullMQ)
+    // 3. Generar URL prefirmada de 5 minutos para retorno inmediato
+    const signedUrl = await this.storageService.obtenerUrlFirmadaLectura(fileKey);
 
     return {
       id: documento.id,
       estadoSemaforo: documento.estadoSemaforo,
-      archivoUrl: documento.archivoUrl,
-      mensaje: 'Documento registrado correctamente',
+      archivoUrl: signedUrl,
+      mensaje: 'Documento registrado y almacenado correctamente',
     };
   }
 
-  private validarArchivo(base64: string, mimeType?: string) {
-    if (mimeType && !MIME_PERMITIDOS.includes(mimeType)) {
+  private validarArchivo(base64: string, mimeType: string) {
+    if (!MIME_PERMITIDOS.includes(mimeType)) {
       throw new BadRequestException({
         error: { code: 'TIPO_ARCHIVO_NO_PERMITIDO', message: 'Solo se permiten imágenes JPEG/PNG o PDF.' },
       });
     }
-
     const tamanoAprox = (base64.length * 3) / 4;
     if (tamanoAprox > TAMANO_MAX_BYTES) {
       throw new BadRequestException({
