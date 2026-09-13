@@ -43,9 +43,21 @@ psql "$DATABASE_URL" -f prisma/rls-policies.sql
 # 6. Cargar datos semilla (mineras Antapacay/Las Bambas, tags, matriz de requisitos)
 npm run prisma:seed
 
-# 7. Levantar en modo desarrollo
-npm run start:dev
+# 7. Levantar en modo desarrollo (dos terminales)
+# Terminal 1 — compila en watch:
+npm run dev:build
+# Terminal 2 — ejecuta y reinicia al detectar cambios:
+npm run dev:run
 ```
+
+> **Nota histórica:** `nest start --watch` presentó fallas de timing
+> intermitentes en este proyecto (`Cannot find module dist/main`), causadas
+> por caché incremental de TypeScript corrupta (`*.tsbuildinfo`) y una
+> detección automática de NestJS en `nodemon` 3.1.x que sobreescribía el
+> comando a ejecutar. Por eso el flujo usa dos procesos separados y
+> explícitos. Si `dist/main.js` no aparece pese a "0 errors" en la Terminal 1,
+> sospecha primero de `.tsbuildinfo` corrupto:
+> `find . -name "*.tsbuildinfo" -not -path "./node_modules/*" -delete`
 
 API disponible en `http://localhost:3000/api/v1`.
 
