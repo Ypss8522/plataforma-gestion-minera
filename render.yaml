@@ -1,0 +1,55 @@
+databases:
+  - name: minera-postgres
+    plan: free
+    databaseName: minera_acreditacion
+    user: minera_user
+    region: oregon
+
+services:
+  - type: redis
+    name: minera-redis
+    plan: free
+    region: oregon
+    ipAllowList: []
+
+  - type: web
+    name: minera-backend
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install --include=dev && npm run prisma:generate && npm run build
+    startCommand: npm run prisma:migrate:deploy && npm run start:prod
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: minera-postgres
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          name: minera-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: minera-redis
+          type: redis
+          property: port
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: http://localhost:3001
+      - key: NODE_ENV
+        value: production
+      - key: STORAGE_ENDPOINT
+        sync: false
+      - key: STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: STORAGE_SECRET_ACCESS_KEY
+        sync: false
+      - key: STORAGE_BUCKET
+        value: minera-documentos
+      - key: STORAGE_SIGNED_URL_EXPIRY_SECONDS
+        value: "300"

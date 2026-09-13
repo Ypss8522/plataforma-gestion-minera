@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_pass
+          POSTGRES_DB: ci_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://ci_user:ci_pass@localhost:5432/ci_db
+      JWT_SECRET: ci-secret-solo-para-pruebas
+      STORAGE_ENDPOINT: https://example.r2.cloudflarestorage.com
+      STORAGE_ACCESS_KEY_ID: ci-fake-key
+      STORAGE_SECRET_ACCESS_KEY: ci-fake-secret
+      STORAGE_BUCKET: ci-fake-bucket
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Generar cliente Prisma
+        run: npm run prisma:generate
+
+      - name: Aplicar migraciones (valida que no estén rotas)
+        run: npm run prisma:migrate:deploy
+
+      - name: Tests
+        run: npm test
+
+      - name: Build (valida que compile)
+        run: npm run build
+
+  recordatorio-rls:
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Nota
+        run: |
+          echo "Recordatorio: si esta migración tocó tablas con RLS (documento, trabajador,"
+          echo "trabajador_estado_contexto), verificar/re-aplicar prisma/rls-policies.sql"
+          echo "manualmente contra la base de datos de Render."
