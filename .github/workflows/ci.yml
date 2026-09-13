@@ -6,12 +6,6 @@ on:
   push:
     branches: [main]
 
-# Todo el código vive en la subcarpeta minera-backend/, no en la raíz del repo.
-# working-directory por defecto evita repetir "cd minera-backend" en cada step.
-defaults:
-  run:
-    working-directory: minera-backend
-
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -34,6 +28,10 @@ jobs:
     env:
       DATABASE_URL: postgresql://ci_user:ci_pass@localhost:5432/ci_db
       JWT_SECRET: ci-secret-solo-para-pruebas
+      STORAGE_ENDPOINT: https://example.r2.cloudflarestorage.com
+      STORAGE_ACCESS_KEY_ID: ci-fake-key
+      STORAGE_SECRET_ACCESS_KEY: ci-fake-secret
+      STORAGE_BUCKET: ci-fake-bucket
 
     steps:
       - name: Checkout
@@ -44,7 +42,6 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: minera-backend/package-lock.json
 
       - name: Instalar dependencias
         run: npm ci
