@@ -15,11 +15,6 @@ export class CrearDocumentoDto {
   @IsDateString()
   fechaVencimiento?: string;
 
-  /**
-   * Foto/escaneo del documento en base64 (JPEG/PNG/PDF).
-   * En producción: validar tamaño máximo, mimetype real (magic bytes,
-   * no solo extensión) y escanear contra malware antes de subir a S3/GCS.
-   */
   @IsString()
   archivoBase64: string;
 

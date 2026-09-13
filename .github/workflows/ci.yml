@@ -6,13 +6,14 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: read
-  statuses: write
+# Todo el código vive en la subcarpeta minera-backend/, no en la raíz del repo.
+# working-directory por defecto evita repetir "cd minera-backend" en cada step.
+defaults:
+  run:
+    working-directory: minera-backend
 
 jobs:
   ci:
-    name: Backend Test & Build
     runs-on: ubuntu-latest
 
     services:
@@ -32,32 +33,44 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://ci_user:ci_pass@localhost:5432/ci_db
-      JWT_SECRET: ci-secret-solo-para-pruebas-12345678
-      NODE_ENV: test
+      JWT_SECRET: ci-secret-solo-para-pruebas
 
     steps:
-      - name: Checkout del código
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: minera-backend/package-lock.json
 
       - name: Instalar dependencias
-        run: npm install
+        run: npm ci
 
-      - name: Ejecutar Linter
+      - name: Lint
         run: npm run lint
 
-      - name: Generar cliente de Prisma
+      - name: Generar cliente Prisma
         run: npm run prisma:generate
 
-      - name: Validar migraciones en PostgreSQL
+      - name: Aplicar migraciones (valida que no estén rotas)
         run: npm run prisma:migrate:deploy
 
-      - name: Ejecutar pruebas unitarias
+      - name: Tests
         run: npm test
 
-      - name: Compilar proyecto (Build)
+      - name: Build (valida que compile)
         run: npm run build
+
+  recordatorio-rls:
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Nota
+        run: |
+          echo "Recordatorio: si esta migración tocó tablas con RLS (documento, trabajador,"
+          echo "trabajador_estado_contexto), verificar/re-aplicar prisma/rls-policies.sql"
+          echo "manualmente contra la base de datos de Render."

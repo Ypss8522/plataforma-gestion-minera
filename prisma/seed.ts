@@ -22,7 +22,7 @@ async function main() {
     ],
   });
 
-  const tags = await Promise.all(
+  await Promise.all(
     ['Mecánico', 'Supervisor', 'Electricista', 'Cocinero', 'Conductor', 'Transportista'].map((nombre) =>
       prisma.tag.create({ data: { nombre, categoria: 'Operativo' } }),
     ),
@@ -31,7 +31,7 @@ async function main() {
   const cargoTransportista = await prisma.cargo.create({
     data: { nombre: 'Transportista', descripcion: 'Conductor de convoy minero' },
   });
-  const cargoMecanico = await prisma.cargo.create({ data: { nombre: 'Mecánico' } });
+  await prisma.cargo.create({ data: { nombre: 'Mecánico' } });
 
   const docDni = await prisma.documentoTipo.create({
     data: { nombre: 'DNI', categoria: 'IDENTIDAD', requiereVencimiento: false },
@@ -46,7 +46,6 @@ async function main() {
     data: { nombre: 'Licencia de Conducir Clase A-III', categoria: 'LICENCIA', ventanaAlertaDias: 45 },
   });
 
-  // Matriz de requisitos: Antapacay exige menos cursos que Las Bambas (según el requerimiento original).
   await prisma.matrizRequisito.createMany({
     data: [
       { mineraId: antapacay.id, cargoId: cargoTransportista.id, documentoTipoId: docDni.id, obligatorio: true, vigenteDesde: new Date() },
@@ -63,7 +62,7 @@ async function main() {
     data: { email: 'admin@empresa-ejemplo.pe', passwordHash, rol: 'SUPER_ADMIN' },
   });
 
-  console.log('Seed completado:', { empresa: empresa.id, antapacay: antapacay.id, lasBambas: lasBambas.id, tags: tags.length, cargoMecanico: cargoMecanico.id });
+  console.log('Seed completado.');
 }
 
 main()

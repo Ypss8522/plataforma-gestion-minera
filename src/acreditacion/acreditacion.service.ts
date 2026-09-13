@@ -5,13 +5,13 @@ import { CrearDocumentoDto } from './dto/crear-documento.dto';
 import { calcularEstadoSemaforo } from '../common/utils/semaforo.util';
 
 const MIME_PERMITIDOS = ['image/jpeg', 'image/png', 'application/pdf'];
-const TAMANO_MAX_BYTES = 10 * 1024 * 1024; // 10MB
+const TAMANO_MAX_BYTES = 10 * 1024 * 1024;
 
 @Injectable()
 export class AcreditacionService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly storageService: StorageService, // <-- Inyectar StorageService
+    private readonly storageService: StorageService,
   ) {}
 
   async crearDocumento(dto: CrearDocumentoDto, subidoPor: string) {
@@ -40,7 +40,6 @@ export class AcreditacionService {
 
     const { estado } = calcularEstadoSemaforo(fechaVencimiento, tipo.ventanaAlertaDias);
 
-    // 1. Subir a Cloudflare R2 y obtener la clave del archivo (Key)
     const fileKey = await this.storageService.subirArchivoBase64(
       dto.archivoBase64,
       mimeType,
@@ -48,12 +47,11 @@ export class AcreditacionService {
       dto.documentoTipoId,
     );
 
-    // 2. Persistir metadatos en PostgreSQL
     const documento = await this.prisma.documento.create({
       data: {
         trabajadorId: dto.trabajadorId,
         documentoTipoId: dto.documentoTipoId,
-        archivoUrl: fileKey, // Guardamos la clave interna, nunca URLs públicas
+        archivoUrl: fileKey,
         fechaEmision: dto.fechaEmision ? new Date(dto.fechaEmision) : null,
         fechaVencimiento,
         estadoSemaforo: estado,
@@ -61,7 +59,6 @@ export class AcreditacionService {
       },
     });
 
-    // 3. Generar URL prefirmada de 5 minutos para retorno inmediato
     const signedUrl = await this.storageService.obtenerUrlFirmadaLectura(fileKey);
 
     return {

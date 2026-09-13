@@ -14,12 +14,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  /**
-   * El payload validado se adjunta a request.user.
-   * Nunca confiar en campos adicionales que pudiera llevar el token
-   * más allá de estos, y nunca aceptar un trabajadorId que no venga
-   * firmado en el propio JWT.
-   */
   async validate(payload: JwtPayload): Promise<JwtPayload> {
     return {
       usuarioId: payload.usuarioId,

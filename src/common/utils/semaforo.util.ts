@@ -1,17 +1,10 @@
 import { EstadoSemaforo } from '@prisma/client';
 
-/**
- * RN-01 — Lógica del semáforo.
- * El umbral de "amarillo" es configurable por documento_tipo.ventanaAlertaDias
- * (default 30), NUNCA hardcodeado a nivel de código de negocio general.
- */
 export function calcularEstadoSemaforo(
   fechaVencimiento: Date | null,
   ventanaAlertaDias = 30,
 ): { estado: EstadoSemaforo; diasRestantes: number | null } {
   if (!fechaVencimiento) {
-    // Documento sin fecha de vencimiento registrada => se asume incompleto/rojo,
-    // nunca se asume vigente por defecto (regla explícita de RN-01).
     return { estado: EstadoSemaforo.ROJO, diasRestantes: null };
   }
 

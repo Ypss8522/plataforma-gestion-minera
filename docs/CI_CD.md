@@ -6,113 +6,123 @@
 Feature branch → Pull Request → CI (GitHub Actions) → Merge a main → CD (Render, automático)
 ```
 
-- **CI**: `.github/workflows/ci.yml`. Corre en cada PR: lint, valida migraciones de Prisma contra un Postgres efímero, tests, build. Bloquea el merge si algo falla (una vez actives la regla de protección de rama — ver abajo).
+- **CI**: `.github/workflows/ci.yml`. Corre en cada PR: lint, valida migraciones de Prisma, tests, build.
 - **CD**: lo hace **Render**, sin workflow adicional. Con `autoDeploy: true` en `render.yaml`, cada push a `main` dispara build + deploy solo.
+
+**IMPORTANTE — estructura del repo:** el código vive en la **raíz del repositorio**
+(no dentro de una subcarpeta). Tanto `render.yaml` como `.github/workflows/ci.yml`
+asumen esto — ninguno de los dos usa `rootDir`/`working-directory`. Si en algún
+momento el proyecto se reorganiza dentro de una subcarpeta, ambos archivos
+necesitan actualizarse para apuntar a esa ruta (ver la sección de
+Troubleshooting al final, fue exactamente la causa de que el CI se quedara
+"Queued" indefinidamente en una versión anterior de este repo).
 
 ## Paso a paso — configuración inicial (una sola vez)
 
 ### 1. Generar la primera migración de Prisma (en tu máquina)
 ```bash
-docker compose up -d          # levanta Postgres/Redis local
+docker compose up -d
 cp .env.example .env
 npm install
-npm run prisma:migrate        # te pedirá un nombre, ej: "init"
+npm run prisma:migrate
 ```
-Esto crea `prisma/migrations/xxxxxx_init/`. **Comitéala al repo** — sin ella, `migrate deploy` en Render no tiene nada que aplicar.
-
-```bash
-git add prisma/migrations
-git commit -m "chore: migración inicial de Prisma"
-git push
-```
+Comitea `prisma/migrations/` al repo — sin ella, `migrate deploy` en Render no tiene nada que aplicar.
 
 ### 2. Crear los servicios en Render usando el Blueprint
-
-El repo ya incluye `render.yaml` en la raíz, que define los 3 servicios (backend, Postgres, Redis) como código.
-
 1. https://dashboard.render.com → **New +** → **Blueprint**.
-2. Conecta tu cuenta de GitHub y selecciona el repo.
-3. Render detecta `render.yaml` automáticamente y muestra los 3 recursos que va a crear: `minera-postgres`, `minera-redis`, `minera-backend`. Click **Apply**.
-4. Render genera solo el `JWT_SECRET` (por `generateValue: true`) y conecta `DATABASE_URL`/`REDIS_HOST`/`REDIS_PORT` automáticamente entre servicios — no necesitas copiar/pegar nada de eso a mano.
-5. Revisa **Environment** del servicio `minera-backend` y ajusta `CORS_ORIGINS` cuando tengan el dominio real del frontend.
-
-> **Alternativa sin Blueprint** (clicks manuales en vez de `render.yaml`): New + → PostgreSQL, New + → Redis, New + → Web Service (conectar repo, build command `npm install && npm run prisma:generate && npm run build`, start command `npm run prisma:migrate:deploy && npm run start:prod`), y agregar las variables de entorno a mano referenciando la Postgres/Redis creadas. El Blueprint simplemente automatiza esto mismo.
+2. Conecta GitHub y selecciona el repo.
+3. Render detecta `render.yaml` en la raíz automáticamente y muestra los 3 recursos: `minera-postgres`, `minera-redis`, `minera-backend`. Click **Apply**.
+4. Render genera `JWT_SECRET` automáticamente. Las variables `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` están marcadas como `sync: false` en el blueprint — debes ingresarlas manualmente en el dashboard (Environment del servicio `minera-backend`) con tus credenciales reales de Cloudflare R2, ya que son secretos que no deben vivir en `render.yaml`.
+5. Ajusta `CORS_ORIGINS` cuando tengan el dominio real del frontend.
 
 ### 3. Confirmar el plan de los servicios
-Los planes `free` en `render.yaml` son solo para arrancar en desarrollo:
-- **Free web service**: se "duerme" tras 15 min sin tráfico y tarda ~30-50s en despertar en el siguiente request. Aceptable en Sprint 1-2, molesto para demos con la minera.
-- **Free Postgres**: expira a los 30 días en el plan gratuito de Render — revisar antes de que caduque y hacer upgrade a un plan pago si el proyecto sigue activo.
+Los planes `free` son solo para desarrollo:
+- **Free web service**: se "duerme" tras 15 min sin tráfico (~30-50s en despertar).
+- **Free Postgres**: expira a los 30 días — hacer upgrade antes de esa fecha si el proyecto sigue activo.
 
-Cuando se acerquen a un piloto real, cambien `plan: free` → `plan: starter` (o superior) en `render.yaml` y hagan push; Render aplica el cambio de plan al detectar la diferencia.
-
-### 4. Aplicar RLS la primera vez (manual, una sola vez por entorno)
-Prisma no gestiona políticas RLS. Después del primer deploy exitoso:
+### 4. Aplicar RLS la primera vez (manual)
 ```bash
-# Render → minera-postgres → Connect → copiar "External Database URL"
 psql "postgresql://...render-url.../minera_acreditacion" -f prisma/rls-policies.sql
 ```
-Repite esto solo cuando agreguen una tabla nueva que necesite RLS — es intencionalmente manual, para revisar cambios de seguridad antes de aplicarlos.
 
-### 4.1 Cargar datos semilla (seed) — manual, no corre en cada deploy
-El seed (mineras Antapacay/Las Bambas, tags, matriz de requisitos, usuario admin) tampoco corre automáticamente — sería destructivo/redundante re-sembrar en cada push. Córrelo una sola vez apuntando a la base de Render:
+### 4.1 Cargar datos semilla (manual)
 ```bash
 DATABASE_URL="postgresql://...render-url.../minera_acreditacion" npm run prisma:seed
 ```
 
-### 4.2 Checklist de configuración de la base de datos (no confundir con "ya está lista")
-- [ ] Blueprint aplicado → la instancia de Postgres existe (vacía).
-- [ ] `prisma migrate deploy` corrió en el primer deploy → las tablas existen.
-- [ ] RLS aplicado manualmente (paso 4).
-- [ ] Seed corrido manualmente (paso 4.1).
-- [ ] Revisar el plan: el Postgres **free de Render expira a los 30 días** — antes de esa fecha, hacer upgrade a `starter` si el proyecto sigue activo, o perderán los datos.
-- [ ] Guardar el "External Database URL" en un lugar seguro compartido (ej. gestor de contraseñas del equipo), no en el chat ni en el repo — la necesitarán para seed/RLS/debugging futuro.
+### 4.2 Checklist de base de datos
+- [ ] Blueprint aplicado (instancia existe, vacía).
+- [ ] `prisma migrate deploy` corrió en el primer deploy (tablas existen).
+- [ ] RLS aplicado manualmente.
+- [ ] Seed corrido manualmente.
+- [ ] Vigilar la caducidad de 30 días del plan free de Postgres.
 
 ### 5. Proteger la rama `main` en GitHub
-GitHub → repo → **Settings → Branches → Add branch protection rule**:
-- Branch name pattern: `main`
+GitHub → repo → **Settings → Branches → Add branch protection rule** → `main`:
 - ✅ Require a pull request before merging
-- ✅ Require status checks to pass before merging → seleccionar el job `ci` (aparece en la lista después de que corra al menos una vez)
-- ✅ Require branches to be up to date before merging
+- ✅ Require status checks to pass before merging → seleccionar el job `ci`
+  (solo aparece en la lista **después** de que el workflow haya corrido
+  exitosamente al menos una vez sobre `main` — si nunca corrió, actívalo
+  sin este checkbox primero, haz un PR de prueba, y luego vuelve a editar
+  la regla para marcarlo)
+- ✅ Require approvals (mínimo 1)
 
-Sin esto, el CI corre pero no impide que se mergee código roto.
-
-## Troubleshooting — problemas reales ya resueltos
-
-### `ENOENT: no such file or directory, open '.../package.json'`
-Causa: el repo tiene el código dentro de una subcarpeta (`minera-backend/`) en vez de en la raíz, y Render no sabía dónde buscar. Solución aplicada: agregar `rootDir: minera-backend` al servicio `web` en `render.yaml`. Con eso, Render ejecuta `buildCommand`/`startCommand` dentro de esa carpeta.
-
-Esto también afecta a **GitHub Actions**: como `ci.yml` vive obligatoriamente en `.github/workflows/` en la raíz del repo, pero el `package.json` está en `minera-backend/`, el workflow necesita `defaults.run.working-directory: minera-backend` (ya aplicado en `ci.yml`) — si no, el CI falla con el mismo tipo de error que tuviste en Render.
-
-### Build falla buscando `nest`/`@nestjs/cli` (devDependencies no instaladas)
-Causa: Render corre `npm install` con `NODE_ENV=production` por defecto, lo que **omite `devDependencies`** — y `nest build` necesita `@nestjs/cli`, que originalmente estaba en `devDependencies`.
-Dos soluciones válidas (con cualquiera de las dos basta, no hace falta aplicar ambas):
-1. Cambiar el build command a `npm install --include=dev ...` (ya aplicado en `render.yaml`).
-2. Mover los paquetes que el build necesita (`@nestjs/cli`, `@types/*` usados en compilación) a `dependencies` en vez de `devDependencies` (también aplicado en `package.json`, de forma redundante con la opción 1 — no genera conflicto, solo es doble seguro).
-
-
+## Flujo de trabajo del día a día
 
 1. `git checkout -b feature/nombre-corto`
-2. Trabajas, commiteas.
-3. `git push origin feature/nombre-corto` → abres Pull Request contra `main`.
-4. GitHub Actions corre solo. Si falla, corriges y vuelves a pushear.
-5. El otro revisa y aprueba el PR.
-6. Merge a `main` → Render detecta el push (`autoDeploy: true`) → build → `prisma migrate deploy` → arranca la app. En ~2-5 min (más si el free tier estaba dormido) está desplegado.
+2. Commitea tus cambios.
+3. `git push origin feature/nombre-corto` → abre PR contra `main`.
+4. GitHub Actions corre solo. Si falla, corrige y vuelve a pushear.
+5. El otro revisa y aprueba.
+6. Merge a `main` → Render redeploya automáticamente (~2-5 min).
 
 ## Verificar que el deploy salió bien
-
-Render expone logs en vivo del build y del arranque (**Logs** tab del servicio). Además, ya quedó listo un endpoint de healthcheck que Render usa automáticamente para confirmar que el servicio levantó:
 ```
 GET https://minera-backend.onrender.com/api/v1/health
 → { "status": "ok", "timestamp": "..." }
 ```
 
-## Entornos: ¿uno solo o staging + producción?
+## Patrón de seguridad para futuros endpoints de lectura de documentos
 
-Con 2 personas, un solo entorno en Render (tratado como staging real) es suficiente por ahora. Cuando estén cerca de un piloto con la minera, dupliquen el Blueprint en un segundo proyecto de Render con variables separadas, y ahí sí conviene atar el deploy de producción a un tag (`v1.0.0`) en vez de cada push a `main`. No monten esa complejidad todavía.
+Cuando se construya un endpoint que devuelva la URL firmada de un documento
+ya subido (ej. para que RRHH o el propio trabajador lo visualicen), la regla
+dura es: **el `fileKey` nunca se acepta como parámetro del cliente.** Siempre
+se resuelve consultando la tabla `documento` por su ID interno y verificando
+explícitamente que pertenece al trabajador autorizado (o que el actor tiene
+un rol con permiso amplio, como RRHH/GERENCIA). Solo después de esa
+verificación se llama a `storageService.obtenerUrlFirmadaLectura(...)`.
 
-## Secrets — checklist de seguridad
+## Troubleshooting — problemas reales ya resueltos
 
-- [ ] `.env` está en `.gitignore` (ya viene configurado).
-- [ ] `JWT_SECRET` lo genera Render automáticamente (`generateValue: true`) — nunca lo pongas a mano en el repo.
-- [ ] `DATABASE_URL`/`REDIS_HOST`/`REDIS_PORT` los inyecta Render entre servicios — nunca hardcodeados.
-- [ ] Si más adelante agregan un workflow de GitHub Actions que hable con la API de Render (ej. para forzar un deploy manual), el token de Render va en **GitHub → Settings → Secrets and variables → Actions**, no en el YAML.
+### CI se queda "Queued" (amarillo/gris) indefinidamente, sin iniciar steps
+Causa más probable: desajuste entre dónde vive realmente el código en el
+repo y las rutas asumidas por `render.yaml`/`ci.yml`. En una versión anterior
+de este proyecto, el código vivía en una subcarpeta (`minera-backend/`) y
+`ci.yml` tenía `defaults.run.working-directory: minera-backend` — al mover
+todo a la raíz del repo sin actualizar esa configuración (o viceversa), el
+workflow podía quedar mal referenciado. Solución: confirmar que la ubicación
+real del `package.json` en el repo coincide exactamente con lo que asumen
+`render.yaml` (sin `rootDir` si está en la raíz) y `ci.yml` (sin
+`working-directory` si está en la raíz).
+
+Otras causas a descartar en orden: cuota de minutos de Actions agotada
+(Settings de la cuenta → Billing → Actions), permisos de Actions
+restringidos (repo → Settings → Actions → General), o el workflow
+individual deshabilitado manualmente (Actions → nombre del workflow →
+buscar banner "This workflow is disabled").
+
+### `ENOENT: no such file or directory, open '.../package.json'` en Render
+Causa: Render buscando el `package.json` en una ruta que no coincide con
+la estructura real del repo. Solución: si el código está en la raíz, no usar
+`rootDir` en `render.yaml`. Si está en una subcarpeta, sí usarlo.
+
+### Build falla buscando `nest`/`@nestjs/cli`
+Causa: Render corre `npm install` con `NODE_ENV=production`, que omite
+`devDependencies`, y `@nestjs/cli` estaba ahí. Solución aplicada: usar
+`npm install --include=dev` en el build command (ya en `render.yaml`), y
+mantener `@nestjs/cli` en `dependencies` como doble seguro.
+
+### `dist/main.js` no existe pese a que el build dice "0 errors"
+Causa: caché incremental de TypeScript (`*.tsbuildinfo`) corrupta.
+Solución aplicada: se quitó `"incremental": true` de `tsconfig.json`
+permanentemente, y `*.tsbuildinfo` está en `.gitignore`.

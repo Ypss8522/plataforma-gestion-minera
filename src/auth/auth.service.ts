@@ -13,7 +13,6 @@ export class AuthService {
   async login(email: string, password: string) {
     const usuario = await this.prisma.usuario.findUnique({ where: { email } });
 
-    // Mensaje genérico deliberado: no revelar si el email existe o no (previene enumeración).
     if (!usuario || !usuario.activo) {
       throw new UnauthorizedException({
         error: { code: 'CREDENCIALES_INVALIDAS', message: 'Email o contraseña incorrectos.' },

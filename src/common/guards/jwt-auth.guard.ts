@@ -3,11 +3,6 @@ import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
-/**
- * Valida el JWT del header Authorization y adjunta el payload a request.user.
- * Se aplica globalmente en app.module.ts (APP_GUARD),
- * salvo endpoints marcados explícitamente con @Public().
- */
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(private reflector: Reflector) {

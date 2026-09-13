@@ -1,8 +1,3 @@
-// ============================================================
-// Prisma Schema - Sistema de Acreditación Minera
-// Basado en el ERD de la Documentación Técnica Maestra v1.0
-// ============================================================
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,8 +6,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// ---------- ENUMS ----------
 
 enum RolUsuario {
   SUPER_ADMIN
@@ -58,44 +51,42 @@ enum EstadoFrenteTrabajo {
   CERRADO
 }
 
-// ---------- MODELOS ----------
-
 model Empresa {
-  id            String   @id @default(uuid())
-  razonSocial   String   @map("razon_social")
-  ruc           String   @unique
-  createdAt     DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  razonSocial String   @map("razon_social")
+  ruc         String   @unique
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  trabajadores  Trabajador[]
-  usuarios      Usuario[]
-  mineras       EmpresaMinera[]
+  trabajadores Trabajador[]
+  usuarios     Usuario[]
+  mineras      EmpresaMinera[]
 
   @@map("empresa")
 }
 
 model Minera {
-  id              String   @id @default(uuid())
-  nombre          String   @unique
-  colorPrimario   String?  @map("color_primario")
-  colorSecundario String?  @map("color_secundario")
-  logoUrl         String?  @map("logo_url")
+  id              String  @id @default(uuid())
+  nombre          String  @unique
+  colorPrimario   String? @map("color_primario")
+  colorSecundario String? @map("color_secundario")
+  logoUrl         String? @map("logo_url")
 
-  empresas            EmpresaMinera[]
-  matrizRequisitos     MatrizRequisito[]
-  frentesTrabajo       FrenteTrabajo[]
-  convoyes             Convoy[]
-  estadosContexto      TrabajadorEstadoContexto[]
-  tema                 MineraTema?
+  empresas         EmpresaMinera[]
+  matrizRequisitos MatrizRequisito[]
+  frentesTrabajo   FrenteTrabajo[]
+  convoyes         Convoy[]
+  estadosContexto  TrabajadorEstadoContexto[]
+  tema             MineraTema?
 
   @@map("minera")
 }
 
 model MineraTema {
-  id          String  @id @default(uuid())
-  mineraId    String  @unique @map("minera_id")
-  colorHex    String  @map("color_hex")
-  tipografia  String?
-  modo        String  @default("claro")
+  id         String  @id @default(uuid())
+  mineraId   String  @unique @map("minera_id")
+  colorHex   String  @map("color_hex")
+  tipografia String?
+  modo       String  @default("claro")
 
   minera Minera @relation(fields: [mineraId], references: [id])
 
@@ -116,24 +107,24 @@ model EmpresaMinera {
 }
 
 model Trabajador {
-  id               String                  @id @default(uuid())
-  empresaId        String                  @map("empresa_id")
-  nombres          String
-  apellidos        String
-  dni              String                  @unique
-  fechaNacimiento  DateTime?               @map("fecha_nacimiento")
-  fechaIngreso     DateTime                @map("fecha_ingreso")
-  telefono         String?
-  estadoGeneral    EstadoGeneralTrabajador @default(ACTIVO) @map("estado_general")
-  createdAt        DateTime                @default(now()) @map("created_at")
+  id              String                  @id @default(uuid())
+  empresaId       String                  @map("empresa_id")
+  nombres         String
+  apellidos       String
+  dni             String                  @unique
+  fechaNacimiento DateTime?               @map("fecha_nacimiento")
+  fechaIngreso    DateTime                @map("fecha_ingreso")
+  telefono        String?
+  estadoGeneral   EstadoGeneralTrabajador @default(ACTIVO) @map("estado_general")
+  createdAt       DateTime                @default(now()) @map("created_at")
 
-  empresa           Empresa                     @relation(fields: [empresaId], references: [id])
-  tags               TrabajadorTag[]
-  documentos         Documento[]
-  estadosContexto    TrabajadorEstadoContexto[]
-  frenteMiembros     FrenteTrabajoMiembro[]
-  convoyMiembros     ConvoyMiembro[]
-  usuario            Usuario?
+  empresa         Empresa                    @relation(fields: [empresaId], references: [id])
+  tags            TrabajadorTag[]
+  documentos      Documento[]
+  estadosContexto TrabajadorEstadoContexto[]
+  frenteMiembros  FrenteTrabajoMiembro[]
+  convoyMiembros  ConvoyMiembro[]
+  usuario         Usuario?
 
   @@index([apellidos])
   @@index([empresaId])
@@ -177,11 +168,11 @@ model Cargo {
 }
 
 model DocumentoTipo {
-  id                   String             @id @default(uuid())
-  nombre               String
-  categoria            CategoriaDocumento
-  ventanaAlertaDias    Int                @default(30) @map("ventana_alerta_dias")
-  requiereVencimiento  Boolean            @default(true) @map("requiere_vencimiento")
+  id                  String             @id @default(uuid())
+  nombre              String
+  categoria           CategoriaDocumento
+  ventanaAlertaDias   Int                @default(30) @map("ventana_alerta_dias")
+  requiereVencimiento Boolean            @default(true) @map("requiere_vencimiento")
 
   matrizRequisitos MatrizRequisito[]
   documentos       Documento[]
@@ -190,14 +181,14 @@ model DocumentoTipo {
 }
 
 model MatrizRequisito {
-  id                String    @id @default(uuid())
-  mineraId          String    @map("minera_id")
-  cargoId           String    @map("cargo_id")
-  documentoTipoId   String    @map("documento_tipo_id")
-  obligatorio       Boolean   @default(true)
-  version           Int       @default(1)
-  vigenteDesde      DateTime  @map("vigente_desde")
-  vigenteHasta      DateTime? @map("vigente_hasta")
+  id              String    @id @default(uuid())
+  mineraId        String    @map("minera_id")
+  cargoId         String    @map("cargo_id")
+  documentoTipoId String    @map("documento_tipo_id")
+  obligatorio     Boolean   @default(true)
+  version         Int       @default(1)
+  vigenteDesde    DateTime  @map("vigente_desde")
+  vigenteHasta    DateTime? @map("vigente_hasta")
 
   minera        Minera        @relation(fields: [mineraId], references: [id])
   cargo         Cargo         @relation(fields: [cargoId], references: [id])
@@ -209,16 +200,16 @@ model MatrizRequisito {
 }
 
 model Documento {
-  id                String         @id @default(uuid())
-  trabajadorId      String         @map("trabajador_id")
-  documentoTipoId   String         @map("documento_tipo_id")
-  archivoUrl        String         @map("archivo_url")
-  archivoHash        String?        @map("archivo_hash")
-  fechaEmision      DateTime?      @map("fecha_emision")
-  fechaVencimiento  DateTime?      @map("fecha_vencimiento")
-  estadoSemaforo    EstadoSemaforo @default(ROJO) @map("estado_semaforo")
-  subidoPor         String?        @map("subido_por")
-  createdAt         DateTime       @default(now()) @map("created_at")
+  id               String         @id @default(uuid())
+  trabajadorId     String         @map("trabajador_id")
+  documentoTipoId  String         @map("documento_tipo_id")
+  archivoUrl       String         @map("archivo_url")
+  archivoHash      String?        @map("archivo_hash")
+  fechaEmision     DateTime?      @map("fecha_emision")
+  fechaVencimiento DateTime?      @map("fecha_vencimiento")
+  estadoSemaforo   EstadoSemaforo @default(ROJO) @map("estado_semaforo")
+  subidoPor        String?        @map("subido_por")
+  createdAt        DateTime       @default(now()) @map("created_at")
 
   trabajador    Trabajador    @relation(fields: [trabajadorId], references: [id])
   documentoTipo DocumentoTipo @relation(fields: [documentoTipoId], references: [id])
@@ -230,14 +221,14 @@ model Documento {
 }
 
 model TrabajadorEstadoContexto {
-  id                 String    @id @default(uuid())
-  trabajadorId       String    @map("trabajador_id")
-  mineraId           String    @map("minera_id")
-  cargoId            String    @map("cargo_id")
-  porcentajeAvance   Decimal   @default(0) @map("porcentaje_avance") @db.Decimal(5, 2)
-  es100Porciento     Boolean   @default(false) @map("es_100_porciento")
-  fechaAlcanzo100    DateTime? @map("fecha_alcanzo_100")
-  calculadoEn        DateTime  @default(now()) @map("calculado_en")
+  id               String    @id @default(uuid())
+  trabajadorId     String    @map("trabajador_id")
+  mineraId         String    @map("minera_id")
+  cargoId          String    @map("cargo_id")
+  porcentajeAvance Decimal   @default(0) @map("porcentaje_avance") @db.Decimal(5, 2)
+  es100Porciento   Boolean   @default(false) @map("es_100_porciento")
+  fechaAlcanzo100  DateTime? @map("fecha_alcanzo_100")
+  calculadoEn      DateTime  @default(now()) @map("calculado_en")
 
   trabajador Trabajador @relation(fields: [trabajadorId], references: [id])
   minera     Minera     @relation(fields: [mineraId], references: [id])
@@ -281,10 +272,10 @@ model FrenteTrabajoMiembro {
 }
 
 model Convoy {
-  id       String  @id @default(uuid())
-  codigo   String  @unique
-  mineraId String  @map("minera_id")
-  estado   String  @default("ACTIVO")
+  id       String @id @default(uuid())
+  codigo   String @unique
+  mineraId String @map("minera_id")
+  estado   String @default("ACTIVO")
 
   minera   Minera          @relation(fields: [mineraId], references: [id])
   miembros ConvoyMiembro[]
@@ -305,13 +296,13 @@ model ConvoyMiembro {
 }
 
 model Usuario {
-  id            String     @id @default(uuid())
-  email         String     @unique
-  passwordHash  String     @map("password_hash")
-  rol           RolUsuario
-  empresaId     String?    @map("empresa_id")
-  trabajadorId  String?    @unique @map("trabajador_id")
-  activo        Boolean    @default(true)
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  rol          RolUsuario
+  empresaId    String?    @map("empresa_id")
+  trabajadorId String?    @unique @map("trabajador_id")
+  activo       Boolean    @default(true)
 
   empresa    Empresa?    @relation(fields: [empresaId], references: [id])
   trabajador Trabajador? @relation(fields: [trabajadorId], references: [id])
@@ -320,13 +311,13 @@ model Usuario {
 }
 
 model AuditoriaLog {
-  id         String   @id @default(uuid())
-  usuarioId  String?  @map("usuario_id")
-  accion     String
-  entidad    String
-  entidadId  String?  @map("entidad_id")
-  detalle    Json?
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  usuarioId String?  @map("usuario_id")
+  accion    String
+  entidad   String
+  entidadId String?  @map("entidad_id")
+  detalle   Json?
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([entidad, entidadId])
   @@index([createdAt])

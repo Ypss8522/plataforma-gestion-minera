@@ -14,9 +14,6 @@ export class AcreditacionController {
   @Post()
   @Roles(RolUsuario.RRHH, RolUsuario.TRABAJADOR, RolUsuario.SUPER_ADMIN)
   async crear(@Body() dto: CrearDocumentoDto, @CurrentUser() actor: JwtPayload) {
-    // Si el actor es TRABAJADOR, el servicio debería además validar
-    // (vía guard adicional, ver MobileSelfAccessGuard) que dto.trabajadorId
-    // coincide con actor.trabajadorId antes de llegar aquí en el flujo /mobile.
     return this.acreditacionService.crearDocumento(dto, actor.usuarioId);
   }
 }

@@ -5,10 +5,6 @@ import { PrismaService } from '../prisma/prisma.service';
 export class MobileService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Resuelve CU-09. El parámetro trabajadorId SIEMPRE viene del JWT
-   * (nunca de un input del cliente) — ver MobileSelfAccessGuard.
-   */
   async obtenerMiEstado(trabajadorId: string) {
     return this.prisma.withRlsContext({ rol: 'TRABAJADOR', trabajadorId }, async (tx) => {
       const trabajador = await tx.trabajador.findUnique({
@@ -35,13 +31,13 @@ export class MobileService {
 
       return {
         trabajador,
-        contextos: contextos.map((c) => ({
+        contextos: contextos.map((c: any) => ({
           minera: { id: c.minera.id, nombre: c.minera.nombre, colorPrimario: c.minera.colorPrimario },
           cargo: { id: c.cargo.id, nombre: c.cargo.nombre },
           porcentajeAvance: c.porcentajeAvance,
           es100Porciento: c.es100Porciento,
         })),
-        documentos: documentos.map((d) => ({
+        documentos: documentos.map((d: any) => ({
           documentoTipo: d.documentoTipo.nombre,
           estadoSemaforo: d.estadoSemaforo,
           fechaVencimiento: d.fechaVencimiento,
@@ -51,8 +47,6 @@ export class MobileService {
   }
 
   async obtenerMisNotificaciones(trabajadorId: string) {
-    // Placeholder: integrar con tabla de notificaciones cuando se implemente
-    // el módulo de alertas (Worker + BullMQ, ver sección 3 del doc maestro).
     return { trabajadorId, notificaciones: [] };
   }
 }

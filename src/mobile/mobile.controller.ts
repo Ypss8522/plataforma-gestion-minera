@@ -4,18 +4,11 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { MobileSelfAccessGuard } from '../common/guards/mobile-self-access.guard';
 import { MobileService } from './mobile.service';
+import { RolUsuario } from '@prisma/client';
 
-/**
- * Todos los endpoints de este controller son consumidos por la app/PWA
- * del Trabajador. Implementa CU-09 y RN-08 (aislamiento absoluto).
- *
- * IMPORTANTE: ningún método de este controller recibe trabajadorId como
- * parámetro de la petición. Siempre se obtiene desde request.trabajadorIdSeguro,
- * que es inyectado por MobileSelfAccessGuard a partir del JWT.
- */
 @Controller('api/v1/mobile')
 @UseGuards(RolesGuard, MobileSelfAccessGuard)
-@Roles('TRABAJADOR' as any)
+@Roles(RolUsuario.TRABAJADOR)
 export class MobileController {
   constructor(private readonly mobileService: MobileService) {}
 

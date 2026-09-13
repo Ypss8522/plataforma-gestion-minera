@@ -5,7 +5,6 @@ import { PrismaService } from '../prisma/prisma.service';
 export class GerenciaService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** CU-07 — KPI principal: % de personal al 100%. */
   async reportePersonal100(filtros: { mineraId?: string; cargoId?: string }) {
     const contextos = await this.prisma.trabajadorEstadoContexto.findMany({
       where: {
@@ -20,11 +19,10 @@ export class GerenciaService {
 
     const porMinera = new Map<string, { total: number; al100: number; nombre: string }>();
     for (const c of contextos) {
-      const key = c.mineraId;
-      const actual = porMinera.get(key) ?? { total: 0, al100: 0, nombre: c.minera.nombre };
+      const actual = porMinera.get(c.mineraId) ?? { total: 0, al100: 0, nombre: c.minera.nombre };
       actual.total += 1;
       if (c.es100Porciento) actual.al100 += 1;
-      porMinera.set(key, actual);
+      porMinera.set(c.mineraId, actual);
     }
 
     return {
@@ -42,7 +40,6 @@ export class GerenciaService {
     };
   }
 
-  /** RN-07 — Lead time de habilitación. */
   async reporteLeadTime(filtros: { mineraId?: string; cargoId?: string }) {
     const contextos = await this.prisma.trabajadorEstadoContexto.findMany({
       where: {

@@ -7,10 +7,6 @@ import { JwtPayload } from '../common/decorators/current-user.decorator';
 export class OperacionesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * CU-04 — Búsqueda de personal disponible por competencia (tags),
-   * sin colisión de cargos combinados (RN-03).
-   */
   async buscarPorCompetencia(params: {
     tags: string[];
     mineraId: string;
@@ -22,9 +18,7 @@ export class OperacionesService {
         estadoGeneral: 'ACTIVO',
         tags: { some: { tag: { nombre: { in: params.tags } } } },
         ...(params.soloDisponibles100 && {
-          estadosContexto: {
-            some: { mineraId: params.mineraId, es100Porciento: true },
-          },
+          estadosContexto: { some: { mineraId: params.mineraId, es100Porciento: true } },
         }),
       },
       include: {
@@ -49,12 +43,6 @@ export class OperacionesService {
     };
   }
 
-  /**
-   * RN-04 — Validación restrictiva de programación de frentes de trabajo.
-   * Bloquea por defecto si el trabajador no está 100% verde en el contexto
-   * de la minera del frente. Solo permite forzar con override + motivo +
-   * permiso elevado, dejando registro en auditoria_log.
-   */
   async agregarMiembro(frenteTrabajoId: string, dto: AgregarMiembroDto, actor: JwtPayload) {
     const frente = await this.prisma.frenteTrabajo.findUnique({ where: { id: frenteTrabajoId } });
     if (!frente) {
@@ -71,10 +59,7 @@ export class OperacionesService {
 
     if (!estaHabilitado) {
       if (!dto.forzarOverride) {
-        const documentosBloqueantes = await this.obtenerDocumentosBloqueantes(
-          dto.trabajadorId,
-          frente.mineraId,
-        );
+        const documentosBloqueantes = await this.obtenerDocumentosBloqueantes(dto.trabajadorId);
         throw new ConflictException({
           error: {
             code: 'TRABAJADOR_NO_DISPONIBLE',
@@ -84,8 +69,6 @@ export class OperacionesService {
         });
       }
 
-      // Override: exige rol autorizado (ej. OPERACIONES con permiso elevado o GERENCIA)
-      // y motivo obligatorio (ya validado por el DTO con @ValidateIf).
       if (!['OPERACIONES', 'GERENCIA', 'SUPER_ADMIN'].includes(actor.rol)) {
         throw new ForbiddenException({
           error: { code: 'OVERRIDE_NO_AUTORIZADO', message: 'Tu rol no puede forzar asignaciones.' },
@@ -128,7 +111,7 @@ export class OperacionesService {
     };
   }
 
-  private async obtenerDocumentosBloqueantes(trabajadorId: string, mineraId: string) {
+  private async obtenerDocumentosBloqueantes(trabajadorId: string) {
     const documentos = await this.prisma.documento.findMany({
       where: { trabajadorId, estadoSemaforo: { in: ['AMARILLO', 'ROJO'] } },
       include: { documentoTipo: true },

@@ -2,15 +2,8 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@
 
 /**
  * RN-08 — Aislamiento absoluto de datos entre trabajadores.
- *
- * Este guard se aplica a TODOS los endpoints bajo /mobile/*.
- * Regla dura: cualquier trabajadorId presente en params/query/body
- * es IGNORADO Y RECHAZADO si no coincide con el trabajadorId del JWT.
- * El controller nunca debe leer un trabajadorId "de fuera" para este módulo;
- * siempre debe usar request.user.trabajadorId.
- *
- * Esta es la segunda capa de defensa (aplicación) además del RLS de Postgres
- * (ver sección 3.3.1 de la Documentación Técnica Maestra).
+ * Cualquier trabajadorId en params/query/body es ignorado/rechazado si no
+ * coincide con el trabajadorId del JWT.
  */
 @Injectable()
 export class MobileSelfAccessGuard implements CanActivate {
@@ -20,10 +13,7 @@ export class MobileSelfAccessGuard implements CanActivate {
 
     if (!user || user.rol !== 'TRABAJADOR' || !user.trabajadorId) {
       throw new ForbiddenException({
-        error: {
-          code: 'ACCESO_MOBILE_NO_AUTORIZADO',
-          message: 'Este recurso solo es accesible por el rol TRABAJADOR autenticado.',
-        },
+        error: { code: 'ACCESO_MOBILE_NO_AUTORIZADO', message: 'Este recurso solo es accesible por el rol TRABAJADOR autenticado.' },
       });
     }
 
@@ -32,17 +22,11 @@ export class MobileSelfAccessGuard implements CanActivate {
 
     if (trabajadorIdSolicitado && trabajadorIdSolicitado !== user.trabajadorId) {
       throw new ForbiddenException({
-        error: {
-          code: 'TRABAJADOR_ID_NO_COINCIDE',
-          message: 'No puedes consultar datos de otro trabajador.',
-        },
+        error: { code: 'TRABAJADOR_ID_NO_COINCIDE', message: 'No puedes consultar datos de otro trabajador.' },
       });
     }
 
-    // Fuerza el trabajadorId correcto en el request para que el controller
-    // SIEMPRE lo lea de aquí, nunca de params/query/body.
     request.trabajadorIdSeguro = user.trabajadorId;
-
     return true;
   }
 }
