@@ -1,4 +1,7 @@
+
 # Backend — Sistema de Acreditación Minera
+# Documentación Técnica Maestra 
+## Sistema de Gestión de Acreditación, Operaciones y Gerencia — Rubro Minero
 
 Esqueleto basado en la Documentación Técnica Maestra v1.0.
 
