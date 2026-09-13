@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  ci:
+    name: Backend Test & Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_pass
+          POSTGRES_DB: ci_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://ci_user:ci_pass@localhost:5432/ci_db
+      JWT_SECRET: ci-secret-solo-para-pruebas-12345678
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar Linter
+        run: npm run lint
+
+      - name: Generar cliente de Prisma
+        run: npm run prisma:generate
+
+      - name: Validar migraciones en PostgreSQL
+        run: npm run prisma:migrate:deploy
+
+      - name: Ejecutar pruebas unitarias
+        run: npm test
+
+      - name: Compilar proyecto (Build)
+        run: npm run build
