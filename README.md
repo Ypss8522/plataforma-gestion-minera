@@ -1,4 +1,4 @@
-# Documentación Técnica Maestra
+# Documentación Técnica Maestra 
 ## Sistema de Gestión de Acreditación, Operaciones y Gerencia — Rubro Minero
 
 **Versión:** 1.0
