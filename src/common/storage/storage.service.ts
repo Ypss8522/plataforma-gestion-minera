@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
-import { fileTypeFromBuffer } from 'file-type';
+import { fromBuffer } from 'file-type';
 
 const MIME_PERMITIDOS = ['image/jpeg', 'image/png', 'application/pdf'];
 
@@ -51,7 +51,7 @@ export class StorageService {
   ): Promise<string> {
     const buffer = Buffer.from(base64Data, 'base64');
 
-    const tipoDetectado = await fileTypeFromBuffer(buffer);
+    const tipoDetectado = await fromBuffer(buffer);
     const mimeReal = tipoDetectado?.mime ?? mimeTypeDeclarado;
 
     if (!MIME_PERMITIDOS.includes(mimeReal)) {
