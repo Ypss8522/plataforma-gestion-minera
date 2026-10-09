@@ -13,7 +13,7 @@ services:
     branch: main
     autoDeploy: true
     buildCommand: npm install --include=dev && npm run prisma:generate && npm run build
-    startCommand: npm run prisma:migrate:deploy && npm run start:prod
+    startCommand: npm run start:prod
     healthCheckPath: /api/v1/health
     envVars:
       - key: DATABASE_URL
