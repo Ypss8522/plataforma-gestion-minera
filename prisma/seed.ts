@@ -57,9 +57,16 @@ async function main() {
     ],
   });
 
-  const passwordHash = await bcrypt.hash('CambiarEn.Produccion123!', 10);
-  await prisma.usuario.create({
-    data: { email: 'admin@empresa-ejemplo.pe', passwordHash, rol: 'SUPER_ADMIN' },
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@empresa-ejemplo.pe';
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!adminPassword || adminPassword.length < 12) {
+    throw new Error('Define SEED_ADMIN_PASSWORD (mínimo 12 caracteres) antes de correr el seed.');
+  }
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
+  await prisma.usuario.upsert({
+    where: { email: adminEmail },
+    update: {}, // si el admin ya existe, NO se pisa su contraseña
+    create: { email: adminEmail, passwordHash, rol: 'SUPER_ADMIN' },
   });
 
   console.log('Seed completado.');
