@@ -39,6 +39,11 @@ export class StorageService {
     return value;
   }
 
+  /** Segundos de validez de las URLs firmadas (se informa en las respuestas de la API). */
+  get expiracionUrlSegundos(): number {
+    return this.urlExpirySeconds;
+  }
+
   /**
    * IMPORTANTE: trabajadorId y documentoTipoId deben venir siempre de un
    * contexto autorizado (JWT / query filtrada), nunca de un input arbitrario.
