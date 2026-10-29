@@ -17,13 +17,15 @@ export class MobileSelfAccessGuard implements CanActivate {
       });
     }
 
-    const trabajadorIdSolicitado =
-      request.params?.trabajadorId || request.query?.trabajadorId || request.body?.trabajadorId;
+    const fuentes = [request.params?.trabajadorId, request.query?.trabajadorId, request.body?.trabajadorId];
 
-    if (trabajadorIdSolicitado && trabajadorIdSolicitado !== user.trabajadorId) {
-      throw new ForbiddenException({
-        error: { code: 'TRABAJADOR_ID_NO_COINCIDE', message: 'No puedes consultar datos de otro trabajador.' },
-      });
+    for (const idSolicitado of fuentes) {
+      const estaAusente = idSolicitado === undefined || idSolicitado === null || idSolicitado === '';
+      if (!estaAusente && idSolicitado !== user.trabajadorId) {
+        throw new ForbiddenException({
+          error: { code: 'TRABAJADOR_ID_NO_COINCIDE', message: 'No puedes consultar datos de otro trabajador.' },
+        });
+      }
     }
 
     request.trabajadorIdSeguro = user.trabajadorId;
