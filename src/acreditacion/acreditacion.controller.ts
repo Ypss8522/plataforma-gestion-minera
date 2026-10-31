@@ -5,15 +5,25 @@ import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decor
 import { RolUsuario } from '@prisma/client';
 import { AcreditacionService } from './acreditacion.service';
 import { CrearDocumentoDto } from './dto/crear-documento.dto';
+import { RecalculoScheduler } from './schedulers/recalculo.scheduler';
 
 @Controller('api/v1/documentos')
 @UseGuards(RolesGuard)
 export class AcreditacionController {
-  constructor(private readonly acreditacionService: AcreditacionService) {}
+  constructor(
+    private readonly acreditacionService: AcreditacionService,
+    private readonly recalculoScheduler: RecalculoScheduler,
+  ) {}
 
   @Post()
   @Roles(RolUsuario.RRHH, RolUsuario.TRABAJADOR, RolUsuario.SUPER_ADMIN)
   async crear(@Body() dto: CrearDocumentoDto, @CurrentUser() actor: JwtPayload) {
     return this.acreditacionService.crearDocumento(dto, actor.usuarioId);
+  }
+
+  @Post('recalculo-diario')
+  @Roles(RolUsuario.RRHH, RolUsuario.GERENCIA, RolUsuario.SUPER_ADMIN)
+  async dispararRecalculoDiario() {
+    return this.recalculoScheduler.encolarRecalculoDiario();
   }
 }
