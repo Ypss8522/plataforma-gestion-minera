@@ -1,4 +1,5 @@
-import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
 import { RolEnFrente, TipoAsignacion } from '@prisma/client';
 
 export class AgregarMiembroDto {
@@ -16,6 +17,8 @@ export class AgregarMiembroDto {
   forzarOverride?: boolean = false;
 
   @ValidateIf((o) => o.forzarOverride === true)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsNotEmpty()
   @IsString()
   overrideMotivo?: string;
 }
