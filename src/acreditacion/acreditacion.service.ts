@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../common/storage/storage.service';
 import { CrearDocumentoDto } from './dto/crear-documento.dto';
 import { calcularEstadoSemaforo } from '../common/utils/semaforo.util';
+import { RecalculoEstadoService } from './services/recalculo-estado.service';
 
 const MIME_PERMITIDOS = ['image/jpeg', 'image/png', 'application/pdf'];
 const TAMANO_MAX_BYTES = 10 * 1024 * 1024;
@@ -12,6 +13,7 @@ export class AcreditacionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
+    private readonly recalculoService: RecalculoEstadoService,
   ) {}
 
   async crearDocumento(dto: CrearDocumentoDto, subidoPor: string) {
@@ -38,7 +40,7 @@ export class AcreditacionService {
       });
     }
 
-    const { estado } = calcularEstadoSemaforo(fechaVencimiento, tipo.ventanaAlertaDias);
+    const { estado } = calcularEstadoSemaforo(fechaVencimiento, tipo.ventanaAlertaDias, tipo.requiereVencimiento);
 
     const fileKey = await this.storageService.subirArchivoBase64(
       dto.archivoBase64,
@@ -58,6 +60,13 @@ export class AcreditacionService {
         subidoPor,
       },
     });
+
+    // Recalcular inmediatamente los contextos del trabajador tras la subida
+    try {
+      await this.recalculoService.recalcularTrabajador(dto.trabajadorId);
+    } catch {
+      // No bloquea la subida si el recálculo asíncrono tiene advertencia
+    }
 
     const signedUrl = await this.storageService.obtenerUrlFirmadaLectura(fileKey);
 
