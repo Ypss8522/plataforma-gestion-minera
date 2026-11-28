@@ -57,6 +57,8 @@ it('mantiene el número físico luego de una fila con salto de línea entre comi
 });
 
 it.each([
+  [Buffer.alloc(0), /debe tener contenido/],
+  [Buffer.from('dni,nombres,apellidos,fechaIngreso\n'), /no contiene filas de datos/],
   [Buffer.from([0xff, 0xd8, 0xff]), /UTF-8/],
   [Buffer.from('PK\x03\x04contenido'), /XLSX válido/],
   [Buffer.from('cualquier,encabezado\ndato,dato'), /Encabezados inválidos/],

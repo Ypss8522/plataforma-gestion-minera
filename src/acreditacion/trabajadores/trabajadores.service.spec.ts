@@ -50,6 +50,27 @@ it('traduce DNI duplicado a conflicto y verifica que la empresa exista', async (
   await expect(servicio.crear(alta, actor)).rejects.toThrow(NotFoundException);
 });
 
+it('excluye bajas del listado general, permite consultarlas por estado y reactiva el registro existente', async () => {
+  const { servicio, tx } = preparar();
+  await servicio.listar({ pagina: 1, limite: 10 }, actor);
+  expect(tx.trabajador.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { estadoGeneral: { not: 'INACTIVO' } } }));
+  await servicio.listar({ pagina: 1, limite: 10, estadoGeneral: 'INACTIVO' }, actor);
+  expect(tx.trabajador.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { estadoGeneral: 'INACTIVO' } }));
+  await servicio.editar('trabajador', { estadoGeneral: 'ACTIVO' }, actor);
+  expect(tx.trabajador.update).toHaveBeenCalledWith({ where: { id: 'trabajador' }, data: expect.objectContaining({ estadoGeneral: 'ACTIVO' }) });
+  expect(tx.trabajador.create).not.toHaveBeenCalled();
+});
+
+it.each([true, false])('rechaza una empresa inexistente antes de procesar lotes con dryRun=%s', async dryRun => {
+  const { servicio, tx } = preparar();
+  tx.empresa.findUnique.mockResolvedValueOnce(null);
+  const archivo = Buffer.from([cabecera, '12345678,Ana,Prueba,2026-02-03,'].join('\n'));
+  await expect(servicio.importar(archivo, empresaId, dryRun, actor)).rejects.toMatchObject({ status: 404 });
+  expect(tx.trabajador.findMany).not.toHaveBeenCalled();
+  expect(tx.trabajador.createManyAndReturn).not.toHaveBeenCalled();
+  expect(tx.tag.createMany).not.toHaveBeenCalled();
+});
+
 it('reporta errores de parser, DNI existente y duplicado en archivo sin modificar datos en dry run', async () => {
   const { servicio, tx } = preparar();
   tx.trabajador.findMany.mockResolvedValueOnce([{ dni: '01234567' }]);
