@@ -22,3 +22,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE O
 ## Credenciales
 - El seed lee SEED_ADMIN_PASSWORD y no sobrescribe un admin existente.
 - Nunca commitear .env ni contraseñas en docs.
+
+## Escritura de trabajadores
+
+La migración de SCRUM-16 agrega políticas `INSERT` y `UPDATE` sobre `trabajador` para `RRHH` y `SUPER_ADMIN`. La API establece `app.rol` y el resto del contexto del JWT en cada transacción de CRUD e importación. La baja usa `UPDATE` y conserva los datos vinculados. En una instalación nueva también se debe aplicar el SQL de RLS indicado en la guía de instalación para habilitar las políticas. Consulta la [guía de carga](CARGA_TRABAJADORES.md).
