@@ -10,6 +10,8 @@ import { RecalculoEstadoService } from './services/recalculo-estado.service';
 import { RecalculoEstadoProcessor } from './processors/recalculo-estado.processor';
 import { RecalculoScheduler } from './schedulers/recalculo.scheduler';
 import { QUEUE_RECALCULO_ESTADO } from './constants/recalculo.constants';
+import { TrabajadoresController } from './trabajadores/trabajadores.controller';
+import { TrabajadoresService } from './trabajadores/trabajadores.service';
 
 @Module({
   imports: [
@@ -21,6 +23,7 @@ import { QUEUE_RECALCULO_ESTADO } from './constants/recalculo.constants';
     AcreditacionController,
     DocumentosLecturaController,
     MatrizCumplimientoController,
+    TrabajadoresController,
   ],
   providers: [
     AcreditacionService,
@@ -29,6 +32,7 @@ import { QUEUE_RECALCULO_ESTADO } from './constants/recalculo.constants';
     RecalculoEstadoService,
     RecalculoEstadoProcessor,
     RecalculoScheduler,
+    TrabajadoresService,
   ],
   exports: [
     AcreditacionService,
